@@ -1,17 +1,30 @@
 import psycopg2
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_TEMP_NAME = os.getenv("DB_TEMP_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")  
+DB_NAME = os.getenv("DB_NAME", "election_db")
 
 # Your postgres credentials
 DB_CONFIG = {
-    "user": "postgres",
-    "password": "postgres_election_2024", 
-    "host": "localhost",
-    "port": "5432"
+    "user": POSTGRES_USER,
+    "password": POSTGRES_PASSWORD,
+    "host": DB_HOST,
+    "port": DB_PORT
 }
 # ─── PERMANENT DB (election_db) ───────────────────────────────
 
 def get_election_db():
     return psycopg2.connect(
-        dbname="election_db",
+        dbname=DB_NAME,
         **DB_CONFIG
     )
 
@@ -37,7 +50,7 @@ def create_biometric_db():
     conn.close()
 
     # Now connect to biometric_db and create the table
-    conn2 = psycopg2.connect(dbname="biometric_db", **DB_CONFIG)
+    conn2 = psycopg2.connect(dbname=DB_TEMP_NAME, **DB_CONFIG)
     cur2 = conn2.cursor()
 
     cur2.execute("""
@@ -59,7 +72,7 @@ def create_biometric_db():
 
 def get_biometric_db():
     return psycopg2.connect(
-        dbname="biometric_db",
+        dbname=DB_TEMP_NAME,
         **DB_CONFIG
     )
 
@@ -97,10 +110,10 @@ if __name__ == "__main__":
 import json
 
 DB_CONFIG = {
-    "user": "postgres",
-    "password": "g67mbz9h",  # replace with yours
-    "host": "localhost",
-    "port": "5432"
+    "user": DB_USER,
+    "password": DB_PASSWORD,
+    "host": DB_HOST,
+    "port": DB_PORT
 }
 
 def load_voters():
@@ -111,7 +124,7 @@ def load_voters():
     print(f"Loaded {len(voters)} voters from JSON")
 
     # Connect to election_db
-    conn = psycopg2.connect(dbname="election_db", **DB_CONFIG)
+    conn = psycopg2.connect(dbname=DB_NAME, **DB_CONFIG)
     cur = conn.cursor()
 
     # Clear existing voters first (clean slate)

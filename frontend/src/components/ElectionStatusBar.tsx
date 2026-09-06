@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type ElectionStatus } from "@/lib/api";
 import { useSocketEvent } from "@/lib/socket";
 import { useQueryClient } from "@tanstack/react-query";
-import { Shield } from "lucide-react";
 
 type ElectionStatsUpdate = Pick<ElectionStatus, "total_votes" | "active_booths">;
 
@@ -60,25 +59,9 @@ export function ElectionStatusBar() {
           <Stat label="Votes Cast" value={data?.total_votes ?? "—"} />
           <Stat label="Active Booths" value={data?.active_booths ?? "—"} />
 
-          <nav className="ml-2 flex items-center gap-1 rounded-md border border-border bg-background/50 p-1">
-            <NavLink to="/booth" label="Booth" />
-            <NavLink to="/admin" label="Admin" />
-          </nav>
         </div>
       </div>
     </header>
-  );
-}
-
-function NavLink({ to, label }: { to: "/booth" | "/admin"; label: string }) {
-  return (
-    <Link
-      to={to}
-      className="rounded px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:bg-primary data-[status=active]:text-primary-foreground"
-      activeProps={{ "data-status": "active" } as never}
-    >
-      {label}
-    </Link>
   );
 }
 
