@@ -13,6 +13,7 @@ resend
 
 deepface==0.0.99
 tensorflow==2.21.0
+tf-keras
 opencv-python-headless==4.10.0.84
 numpy==2.1.2
 pandas==2.2.3
