@@ -1,25 +1,27 @@
-import psycopg2
+import json
 import os
+
+import psycopg2
+from psycopg2 import sql
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_TEMP_NAME = os.getenv("DB_TEMP_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-POSTGRES_USER = os.getenv("POSTGRES_USER")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")  
-DB_NAME = os.getenv("DB_NAME", "election_db")
+# ─── DB CONFIG (from environment — never hardcode credentials here) ───
 
-# Your postgres credentials
 DB_CONFIG = {
-    "user": POSTGRES_USER,
-    "password": POSTGRES_PASSWORD,
-    "host": DB_HOST,
-    "port": DB_PORT
+    "user": os.environ["DB_USER"],
+    "password": os.environ["DB_PASSWORD"],
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "port": os.environ.get("DB_PORT", "5432"),
 }
+DB_NAME = os.environ.get("DB_NAME", "election_db")
+BIOMETRIC_DB_NAME = os.environ.get(
+    "BIOMETRIC_DB_NAME",
+    os.environ.get("DB_TEMP_NAME", "biometric_db"),
+)
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").lower()
+
 # ─── PERMANENT DB (election_db) ───────────────────────────────
 
 def get_election_db():
@@ -31,26 +33,30 @@ def get_election_db():
 # ─── EPHEMERAL DB (biometric_db) ──────────────────────────────
 
 def create_biometric_db():
-    # Connect to default postgres db to create biometric_db
-    conn = psycopg2.connect(dbname="postgres", **DB_CONFIG)
-    conn.autocommit = True
-    cur = conn.cursor()
-
-    # Check if it already exists
-    cur.execute("SELECT 1 FROM pg_database WHERE datname = 'biometric_db'")
-    exists = cur.fetchone()
-
-    if not exists:
-        cur.execute("CREATE DATABASE biometric_db")
-        print("biometric_db created!")
+    # Render provides one database; never create another database there.
+    if ENVIRONMENT == "production" or BIOMETRIC_DB_NAME == DB_NAME:
+        print(f"Using shared database {BIOMETRIC_DB_NAME} for biometric_log")
     else:
-        print("biometric_db already exists")
+        conn = psycopg2.connect(dbname="postgres", **DB_CONFIG)
+        conn.autocommit = True
+        cur = conn.cursor()
 
-    cur.close()
-    conn.close()
+        cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (BIOMETRIC_DB_NAME,))
+        exists = cur.fetchone()
 
-    # Now connect to biometric_db and create the table
-    conn2 = psycopg2.connect(dbname=DB_TEMP_NAME, **DB_CONFIG)
+        if not exists:
+            cur.execute(
+                sql.SQL("CREATE DATABASE {} ").format(sql.Identifier(BIOMETRIC_DB_NAME))
+            )
+            print(f"{BIOMETRIC_DB_NAME} created!")
+        else:
+            print(f"{BIOMETRIC_DB_NAME} already exists")
+
+        cur.close()
+        conn.close()
+
+    # Now connect to the configured biometric database and create the table.
+    conn2 = psycopg2.connect(dbname=BIOMETRIC_DB_NAME, **DB_CONFIG)
     cur2 = conn2.cursor()
 
     cur2.execute("""
@@ -72,11 +78,15 @@ def create_biometric_db():
 
 def get_biometric_db():
     return psycopg2.connect(
-        dbname=DB_TEMP_NAME,
+        dbname=BIOMETRIC_DB_NAME,
         **DB_CONFIG
     )
 
 def drop_biometric_db():
+    if ENVIRONMENT == "production" or BIOMETRIC_DB_NAME == DB_NAME:
+        print("Skipping biometric database drop in the deployed/shared database.")
+        return
+
     conn = psycopg2.connect(dbname="postgres", **DB_CONFIG)
     conn.autocommit = True
     cur = conn.cursor()
@@ -85,46 +95,32 @@ def drop_biometric_db():
     cur.execute("""
         SELECT pg_terminate_backend(pid)
         FROM pg_stat_activity
-        WHERE datname = 'biometric_db'
-    """)
+        WHERE datname = %s
+    """, (BIOMETRIC_DB_NAME,))
 
     # Now drop it
-    cur.execute("DROP DATABASE IF EXISTS biometric_db")
-    print("biometric_db dropped and destroyed!")
+    cur.execute(
+        sql.SQL("DROP DATABASE IF EXISTS {} ").format(sql.Identifier(BIOMETRIC_DB_NAME))
+    )
+    print(f"{BIOMETRIC_DB_NAME} dropped and destroyed!")
 
     cur.close()
     conn.close()
 
-# ─── TEST ──────────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    print("Creating biometric_db...")
-    create_biometric_db()
-
-    print("\nConnecting to election_db...")
-    conn = get_election_db()
-    print("election_db connected!")
-    conn.close()
-
-    print("\nAll good! Both databases working.")
-import json
-
-DB_CONFIG = {
-    "user": DB_USER,
-    "password": DB_PASSWORD,
-    "host": DB_HOST,
-    "port": DB_PORT
-}
+# ─── VOTER SEEDING ─────────────────────────────────────────────
 
 def load_voters():
+    if ENVIRONMENT == "production":
+        raise RuntimeError("load_voters() is disabled in production.")
+
     # Load voters.json
-    with open("data/voters.json", "r") as f:
+    voters_path = os.path.join(os.path.dirname(__file__), "data", "voters.json")
+    with open(voters_path, "r") as f:
         voters = json.load(f)
 
     print(f"Loaded {len(voters)} voters from JSON")
 
-    # Connect to election_db
-    conn = psycopg2.connect(dbname=DB_NAME, **DB_CONFIG)
+    conn = get_election_db()
     cur = conn.cursor()
 
     # Clear existing voters first (clean slate)
@@ -195,5 +191,15 @@ def load_voters():
     cur.close()
     conn.close()
 
+# ─── TEST ──────────────────────────────────────────────────────
+
 if __name__ == "__main__":
-    load_voters()
+    print("Creating biometric_db...")
+    create_biometric_db()
+
+    print("\nConnecting to election_db...")
+    conn = get_election_db()
+    print("election_db connected!")
+    conn.close()
+
+    print("\nAll good! Both databases working.")

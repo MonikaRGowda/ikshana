@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*_backup.dump
 
 # Jupyter
 .ipynb_checkpoints/

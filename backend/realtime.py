@@ -1,10 +1,17 @@
 """Socket.IO transport and booth-session authentication."""
+import os
+
 import socketio
 
 from database import get_election_db
 
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+SOCKET_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=SOCKET_ORIGINS)
 BOOTH_ROOM = "active-booths"
 
 

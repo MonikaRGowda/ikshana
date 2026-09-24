@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as BoothRouteImport } from './routes/booth'
-import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminRoRouteImport } from './routes/admin-ro'
+import { Route as AdminLoginRouteImport } from './routes/admin-login'
+import { Route as AdminCeoRouteImport } from './routes/admin-ceo'
 import { Route as IndexRouteImport } from './routes/index'
 
 const LoginRoute = LoginRouteImport.update({
@@ -24,9 +26,19 @@ const BoothRoute = BoothRouteImport.update({
   path: '/booth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AdminRoRoute = AdminRoRouteImport.update({
+  id: '/admin-ro',
+  path: '/admin-ro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin-login',
+  path: '/admin-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCeoRoute = AdminCeoRouteImport.update({
+  id: '/admin-ceo',
+  path: '/admin-ceo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,34 +49,55 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin-ceo': typeof AdminCeoRoute
+  '/admin-login': typeof AdminLoginRoute
+  '/admin-ro': typeof AdminRoRoute
   '/booth': typeof BoothRoute
   '/login': typeof LoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin-ceo': typeof AdminCeoRoute
+  '/admin-login': typeof AdminLoginRoute
+  '/admin-ro': typeof AdminRoRoute
   '/booth': typeof BoothRoute
   '/login': typeof LoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin-ceo': typeof AdminCeoRoute
+  '/admin-login': typeof AdminLoginRoute
+  '/admin-ro': typeof AdminRoRoute
   '/booth': typeof BoothRoute
   '/login': typeof LoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/booth' | '/login'
+  fullPaths:
+    | '/'
+    | '/admin-ceo'
+    | '/admin-login'
+    | '/admin-ro'
+    | '/booth'
+    | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/booth' | '/login'
-  id: '__root__' | '/' | '/admin' | '/booth' | '/login'
+  to: '/' | '/admin-ceo' | '/admin-login' | '/admin-ro' | '/booth' | '/login'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin-ceo'
+    | '/admin-login'
+    | '/admin-ro'
+    | '/booth'
+    | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminCeoRoute: typeof AdminCeoRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminRoRoute: typeof AdminRoRoute
   BoothRoute: typeof BoothRoute
   LoginRoute: typeof LoginRoute
 }
@@ -85,11 +118,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoothRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/admin-ro': {
+      id: '/admin-ro'
+      path: '/admin-ro'
+      fullPath: '/admin-ro'
+      preLoaderRoute: typeof AdminRoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-login': {
+      id: '/admin-login'
+      path: '/admin-login'
+      fullPath: '/admin-login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-ceo': {
+      id: '/admin-ceo'
+      path: '/admin-ceo'
+      fullPath: '/admin-ceo'
+      preLoaderRoute: typeof AdminCeoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -104,7 +151,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminCeoRoute: AdminCeoRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminRoRoute: AdminRoRoute,
   BoothRoute: BoothRoute,
   LoginRoute: LoginRoute,
 }

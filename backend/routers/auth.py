@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import sys
 sys.path.append("..")
 from database import get_election_db
+from crypto import decrypt_field
 
 router = APIRouter()
 
@@ -19,7 +20,6 @@ class VoterLookupResponse(BaseModel):
     constituency: str = None
     booth_id: str = None
     timestamp: str = None  
-
 @router.post("/verify-voter", response_model=VoterLookupResponse)
 async def verify_voter(request: VoterLookupRequest):
 
@@ -49,6 +49,19 @@ async def verify_voter(request: VoterLookupRequest):
             )
 
         voter_id, name, constituency, assigned_booth, has_voted = voter
+        name = decrypt_field(name)
+
+        # Case 1.5 — Voter at the wrong booth/constituency. This check
+        # never existed before - a voter could be verified at literally
+        # any booth in the country with no validation at all.
+        if assigned_booth != request.booth_id:
+            return VoterLookupResponse(
+                status="wrong_constituency",
+                message=f"{name} is not registered at this booth. Please go to your assigned constituency: {constituency} (Booth {assigned_booth}).",
+                voter_name=name,
+                constituency=constituency,
+                booth_id=assigned_booth,
+            )
 
         # Case 2 — Voter already voted
         if has_voted:

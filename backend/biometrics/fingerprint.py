@@ -1,7 +1,10 @@
 import os
 from typing import Any, Optional
 
-DLL_PATH = r"C:\Program Files\Mantra\MFS100\Driver\MFS100Test\MANTRA.MFS100.dll"
+DLL_PATH = os.environ.get(
+    "MANTRA_DLL_PATH",
+    r"C:\Program Files\Mantra\MFS100\Driver\MFS100Test\MANTRA.MFS100.dll",
+)
 MATCH_THRESHOLD = 140
 
 _sdk_loaded = False
@@ -18,13 +21,15 @@ def _load_sdk() -> None:
     if not os.path.exists(DLL_PATH):
         raise RuntimeError(f"Mantra SDK DLL not found: {DLL_PATH}")
 
-    import clr
+    import importlib
+
+    clr = importlib.import_module("clr")
 
     clr.AddReference(DLL_PATH)
-    from MANTRA import FingerData, MFS100
+    mantra = importlib.import_module("MANTRA")
 
-    _MFS100 = MFS100
-    _FingerData = FingerData
+    _MFS100 = mantra.MFS100
+    _FingerData = mantra.FingerData
     _sdk_loaded = True
 
 
@@ -56,7 +61,11 @@ def _template_to_bytes(template: Any) -> bytes:
 
 def _bytes_to_dotnet_template(template: Any):
     _load_sdk()
-    from System import Array, Byte
+    import importlib
+
+    system = importlib.import_module("System")
+    Array = system.Array
+    Byte = system.Byte
 
     return Array[Byte](_template_to_bytes(template))
 

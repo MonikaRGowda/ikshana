@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Request
-import hashlib
 import secrets
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import get_election_db
 from realtime import broadcast_booth_event
+from security import hash_password, verify_password
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -23,10 +23,6 @@ class BoothLoginResponse(BaseModel):
     designation: str = None
     assigned_booth: str = None
     session_token: str = None
-
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
-
 
 def _refresh_active_booth_count(cur):
     """Persist the number of distinct booths with an active officer session."""
@@ -92,10 +88,17 @@ async def booth_login(request: BoothLoginRequest, req: Request):
             )
 
         # Case 3 — Wrong password
-        if hash_password(request.password) != password_hash:
+        is_valid, needs_rehash = verify_password(request.password, password_hash)
+        if not is_valid:
             return BoothLoginResponse(
                 status="invalid_credentials",
                 message="Incorrect password. Try again."
+            )
+
+        if needs_rehash:
+            cur.execute(
+                "UPDATE booth_officers SET password_hash = %s WHERE officer_id = %s",
+                (hash_password(request.password), officer_id),
             )
 
         # Case 4 — Success
