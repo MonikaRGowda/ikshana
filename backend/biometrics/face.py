@@ -6,7 +6,7 @@ import os
 from deepface import DeepFace
 from datetime import datetime
 
-FACE_THRESHOLD = 0.4  # cosine distance below this = same person
+FACE_THRESHOLD = 0.1  # cosine distance below this = same person
 
 def decode_base64_image(base64_str: str, save_path: str) -> bool:
     """Decode base64 image from frontend and save to disk"""
@@ -42,7 +42,12 @@ def cosine_distance(emb1: list, emb2: list) -> float:
     import numpy as np
     a = np.array(emb1)
     b = np.array(emb2)
-    return 1 - np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    if a.ndim != 1 or b.ndim != 1 or a.shape != b.shape:
+        raise ValueError("Face embeddings must be one-dimensional vectors of equal length")
+    denominator = np.linalg.norm(a) * np.linalg.norm(b)
+    if denominator == 0:
+        raise ValueError("Face embeddings must not be zero vectors")
+    return float(1 - np.dot(a, b) / denominator)
 
 def find_matching_face(
     new_embedding: list,
@@ -55,8 +60,12 @@ def find_matching_face(
     stored_records: list of {voter_id, face_embedding (list)}
     """
     for record in stored_records:
-        stored_embedding = json.loads(record["face_embedding"])
-        distance = cosine_distance(new_embedding, stored_embedding)
+        try:
+            stored_value = record["face_embedding"]
+            stored_embedding = json.loads(stored_value) if isinstance(stored_value, str) else stored_value
+            distance = cosine_distance(new_embedding, stored_embedding)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
         if distance < FACE_THRESHOLD:
             print(f"Face match found! voter_id: {record['voter_id']}, distance: {distance:.4f}")
             return record
