@@ -185,7 +185,7 @@ def verify_otp(request: VerifyOtpRequest, response: Response):
             value=token,
             httponly=True,
             secure=True,
-            samesite="lax",
+            samesite="none",
             max_age=SESSION_TTL_HOURS * 3600,
         )
 
